@@ -1,0 +1,282 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum SubscriptionTier {
+  FREE
+  PROFESSIONAL
+  BUSINESS
+  ENTERPRISE
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  FAILED
+}
+
+enum SourceType {
+  RSS
+  API
+  SCRAPER
+  NEWSLETTER
+}
+
+model User {
+  id                String           @id @default(cuid())
+  email             String           @unique
+  name              String?
+  password          String?
+  emailVerified     DateTime?
+  image             String?
+  role              UserRole         @default(USER)
+  subscriptionTier  SubscriptionTier @default(FREE)
+  subscriptionEndDate DateTime?
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  accounts          Account[]
+  sessions          Session[]
+  brandProfiles     BrandProfile[]
+  posts             Post[]
+  savedArticles     SavedArticle[]
+  socialAccounts    SocialAccount[]
+  teams             TeamMember[]
+  ownedTeams        Team[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Team {
+  id          String       @id @default(cuid())
+  name        String
+  ownerId     String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  
+  owner       User         @relation(fields: [ownerId], references: [id])
+  members     TeamMember[]
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  userId    String
+  teamId    String
+  role      String   // Admin, Manager, Member, Viewer
+  joinedAt  DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id])
+  team      Team     @relation(fields: [teamId], references: [id])
+  
+  @@unique([userId, teamId])
+}
+
+model BrandProfile {
+  id                String           @id @default(cuid())
+  userId            String
+  name              String
+  description       String?
+  industry          String[]
+  niche             String[]
+  keywords          String[]
+  excludedKeywords  String[]
+  voiceTone         Json             // Professional/Casual slider, humor level, etc.
+  contentPreferences Json            // Preferred content types, post length, etc.
+  audienceTargeting Json             // Demographics, goals, etc.
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  user              User             @relation(fields: [userId], references: [id])
+  newsSources       NewsSource[]
+  posts             Post[]
+}
+
+model NewsSource {
+  id               String       @id @default(cuid())
+  brandProfileId   String
+  name             String
+  url              String
+  type             SourceType
+  isActive         Boolean      @default(true)
+  weight           Float        @default(1.0)
+  reliability      Float        @default(0.5)
+  lastChecked      DateTime?
+  metadata         Json?
+  
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  
+  brandProfile     BrandProfile @relation(fields: [brandProfileId], references: [id])
+  articles         Article[]
+}
+
+model Article {
+  id              String         @id @default(cuid())
+  sourceId        String
+  title           String
+  content         String
+  summary         String?
+  url             String         @unique
+  author          String?
+  publishedAt     DateTime
+  imageUrl        String?
+  metadata        Json?
+  
+  relevanceScore  Float?
+  sentimentScore  Float?
+  viralityScore   Float?
+  entities        Json?          // Extracted entities
+  topics          String[]
+  
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  
+  source          NewsSource     @relation(fields: [sourceId], references: [id])
+  posts           Post[]
+  savedArticles   SavedArticle[]
+}
+
+model SavedArticle {
+  id         String    @id @default(cuid())
+  userId     String
+  articleId  String
+  notes      String?
+  tags       String[]
+  savedAt    DateTime  @default(now())
+  
+  user       User      @relation(fields: [userId], references: [id])
+  article    Article   @relation(fields: [articleId], references: [id])
+  
+  @@unique([userId, articleId])
+}
+
+model SocialAccount {
+  id               String    @id @default(cuid())
+  userId           String
+  platform         String    // twitter, linkedin
+  accountId        String
+  accountName      String
+  accessToken      String
+  refreshToken     String?
+  tokenExpiry      DateTime?
+  isActive         Boolean   @default(true)
+  
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  
+  user             User      @relation(fields: [userId], references: [id])
+  posts            Post[]
+}
+
+model Post {
+  id                String         @id @default(cuid())
+  userId            String
+  brandProfileId    String?
+  socialAccountId   String
+  articleId         String?
+  
+  content           String
+  mediaUrls         String[]
+  hashtags          String[]
+  mentions          String[]
+  
+  status            PostStatus     @default(DRAFT)
+  scheduledFor      DateTime?
+  publishedAt       DateTime?
+  
+  platformPostId    String?        // ID from social platform after publishing
+  
+  engagementData    Json?          // likes, shares, comments, etc.
+  performanceScore  Float?
+  
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  
+  user              User           @relation(fields: [userId], references: [id])
+  brandProfile      BrandProfile?  @relation(fields: [brandProfileId], references: [id])
+  socialAccount     SocialAccount  @relation(fields: [socialAccountId], references: [id])
+  article           Article?       @relation(fields: [articleId], references: [id])
+}
+
+model Template {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  content      String
+  variables    String[] // Variable placeholders in template
+  category     String
+  isPublic     Boolean  @default(false)
+  createdBy    String?
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model AutomationRule {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  trigger        Json     // Trigger conditions
+  actions        Json     // Actions to perform
+  isActive       Boolean  @default(true)
+  userId         String
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Analytics {
+  id              String   @id @default(cuid())
+  date            DateTime
+  userId          String
+  
+  postsPublished  Int      @default(0)
+  totalReach      Int      @default(0)
+  totalEngagement Int      @default(0)
+  followersGained Int      @default(0)
+  clickThrough    Int      @default(0)
+  
+  topTopics       Json?
+  topSources      Json?
+  bestTimes       Json?
+  
+  createdAt       DateTime @default(now())
+}
