@@ -1,35 +1,48 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+"use client";
+
+import { useSession } from "next-auth/react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
-export default async function Dashboard() {
-  const session = await getServerSession(authOptions);
-  
-  const stats = await prisma.$transaction([
-    prisma.post.count({
-      where: { userId: session?.user?.id },
-    }),
-    prisma.post.count({
-      where: { 
-        userId: session?.user?.id,
-        status: "PUBLISHED",
-        publishedAt: {
-          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-        }
-      },
-    }),
-    prisma.brandProfile.count({
-      where: { userId: session?.user?.id },
-    }),
-    prisma.socialAccount.count({
-      where: { userId: session?.user?.id },
-    }),
-  ]);
+interface DashboardStats {
+  totalPosts: number;
+  weeklyPosts: number;
+  brandProfiles: number;
+  socialAccounts: number;
+}
 
-  const [totalPosts, weeklyPosts, brandProfiles, socialAccounts] = stats;
+export default function Dashboard() {
+  const { data: session } = useSession();
+  const [stats, setStats] = useState<DashboardStats>({
+    totalPosts: 0,
+    weeklyPosts: 0,
+    brandProfiles: 0,
+    socialAccounts: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      // Fetch stats from API endpoint
+      fetch('/api/dashboard/stats')
+        .then(res => res.json())
+        .then(data => {
+          setStats(data);
+          setLoading(false);
+        })
+        .catch(() => {
+          setLoading(false);
+        });
+    }
+  }, [session]);
+
+  if (loading) {
+    return <div>Loading dashboard...</div>;
+  }
+
+  const { totalPosts, weeklyPosts, brandProfiles, socialAccounts } = stats;
 
   return (
     <div>

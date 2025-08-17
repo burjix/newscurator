@@ -11,6 +11,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+if (typeof window !== 'undefined') {
+  console.log("Dashboard nav loading on client");
+}
+
 export default function DashboardNav() {
   const { data: session } = useSession();
 
