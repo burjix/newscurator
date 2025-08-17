@@ -61,10 +61,10 @@ export default function SignUp() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Create Account</CardTitle>
+        <CardHeader className="text-center">
+          <CardTitle className="text-xl sm:text-2xl">Create Account</CardTitle>
           <CardDescription>
             Start your journey with NewsCurator
           </CardDescription>

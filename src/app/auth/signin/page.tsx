@@ -45,10 +45,10 @@ export default function SignIn() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Sign In</CardTitle>
+        <CardHeader className="text-center">
+          <CardTitle className="text-xl sm:text-2xl">Sign In</CardTitle>
           <CardDescription>
             Welcome back to NewsCurator
           </CardDescription>
