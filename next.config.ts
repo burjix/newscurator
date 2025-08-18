@@ -1,7 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  experimental: {
+    instrumentationHook: true,
+  },
+  // Disable image optimization for production (using external URLs)
+  images: {
+    unoptimized: true,
+  },
 };
 
 export default nextConfig;
