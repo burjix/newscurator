@@ -3,6 +3,7 @@ import { z } from "zod";
 import { sanitizeResponse, verifyResourceAccess } from "@/lib/security";
 import { prisma } from "@/lib/prisma";
 import { generateContent, generateContentVariations, scoreContent } from "@/lib/ai-content-generator";
+import { generateAIContent, generateAIContentVariations, analyzeContentEngagement } from "@/lib/openai-content-generator";
 
 const generatePostSchema = z.object({
   articleId: z.string().cuid(),
@@ -55,27 +56,63 @@ export const POST = createApiHandler(
 
     await verifyResourceAccess(article.source.brandProfile.userId, user);
 
-    // Generate content variations
-    const variations = await generateContentVariations(
-      {
-        article,
-        brandProfile,
-        platform: body.platform,
-        tone: typeof brandProfile.voiceTone === 'string' ? brandProfile.voiceTone : undefined,
-        includeHashtags: body.includeHashtags,
-        includeLink: body.includeLink,
-        customInstructions: body.customInstructions
-      },
-      body.variations
-    );
+    // Try to use OpenAI first, fallback to templates
+    let variations;
+    try {
+      if (process.env.OPENAI_API_KEY) {
+        variations = await generateAIContentVariations(
+          {
+            article,
+            brandProfile,
+            platform: body.platform,
+            tone: typeof brandProfile.voiceTone === 'string' ? brandProfile.voiceTone : undefined,
+            includeHashtags: body.includeHashtags,
+            includeLink: body.includeLink,
+            customInstructions: body.customInstructions
+          },
+          body.variations
+        );
+      } else {
+        throw new Error('OpenAI API key not available');
+      }
+    } catch (error) {
+      console.log('Using template fallback for content generation');
+      variations = await generateContentVariations(
+        {
+          article,
+          brandProfile,
+          platform: body.platform,
+          tone: typeof brandProfile.voiceTone === 'string' ? brandProfile.voiceTone : undefined,
+          includeHashtags: body.includeHashtags,
+          includeLink: body.includeLink,
+          customInstructions: body.customInstructions
+        },
+        body.variations
+      );
+    }
 
-    // Score each variation
-    const scoredVariations = variations.map(content => ({
-      ...content,
-      score: scoreContent(content.text, content.platform),
-      characterCount: content.text.length,
-      hashtagCount: content.hashtags.length
-    }));
+    // Score each variation using AI if available, fallback to template scoring
+    const scoredVariations = await Promise.all(
+      variations.map(async (content) => {
+        let score;
+        try {
+          if (process.env.OPENAI_API_KEY) {
+            score = await analyzeContentEngagement(content.text, content.platform);
+          } else {
+            score = scoreContent(content.text, content.platform);
+          }
+        } catch (error) {
+          score = scoreContent(content.text, content.platform);
+        }
+        
+        return {
+          ...content,
+          score,
+          characterCount: content.text.length,
+          hashtagCount: content.hashtags.length
+        };
+      })
+    );
 
     // Sort by score
     scoredVariations.sort((a, b) => b.score - a.score);
@@ -98,7 +135,7 @@ export const POST = createApiHandler(
       variations: scoredVariations,
       metadata: {
         generatedAt: new Date().toISOString(),
-        model: 'template-based', // Will be 'gpt-4' or 'claude-3' in production
+        model: process.env.OPENAI_API_KEY ? 'gpt-4o-mini' : 'template-based',
         includesHashtags: body.includeHashtags,
         includesLink: body.includeLink
       }

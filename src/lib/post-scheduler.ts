@@ -280,13 +280,57 @@ export async function publishScheduledPosts(): Promise<void> {
  * Publish post to social media platform
  */
 async function publishToSocialMedia(post: any, account: any): Promise<void> {
-  // This would integrate with actual social media APIs
-  // For now, just log the action
-  console.log(`Publishing to ${account.platform} (${account.username}): ${post.title}`);
-  
-  // In production:
-  // - Twitter API integration
-  // - LinkedIn API integration
-  // - Facebook API integration
-  // - Instagram API integration
+  try {
+    let platformPostId: string | null = null;
+    
+    if (account.platform === 'twitter') {
+      const { postTweet } = await import('@/lib/twitter-client');
+      
+      const result = await postTweet(
+        {
+          accessToken: account.accessToken,
+          accessTokenSecret: account.refreshToken // Twitter uses this field for access token secret
+        },
+        {
+          text: post.content,
+          mediaUrls: post.mediaUrls || []
+        }
+      );
+      
+      platformPostId = result.id;
+      console.log(`Published to Twitter: ${result.url}`);
+      
+    } else if (account.platform === 'linkedin') {
+      const { postToLinkedIn } = await import('@/lib/linkedin-client');
+      
+      const result = await postToLinkedIn(
+        {
+          accessToken: account.accessToken
+        },
+        {
+          text: post.content,
+          mediaUrls: post.mediaUrls || []
+        }
+      );
+      
+      platformPostId = result.id;
+      console.log(`Published to LinkedIn: ${result.url}`);
+      
+    } else {
+      console.log(`Platform ${account.platform} not yet implemented`);
+      return;
+    }
+    
+    // Update post with platform ID
+    if (platformPostId) {
+      await prisma.post.update({
+        where: { id: post.id },
+        data: { platformPostId }
+      });
+    }
+    
+  } catch (error) {
+    console.error(`Error publishing to ${account.platform}:`, error);
+    throw error;
+  }
 }

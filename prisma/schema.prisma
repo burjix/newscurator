@@ -204,6 +204,8 @@ model SocialAccount {
   
   user             User      @relation(fields: [userId], references: [id])
   posts            Post[]
+  
+  @@unique([userId, platform])
 }
 
 model Post {
