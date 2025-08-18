@@ -37,15 +37,22 @@ export type ApiHandler = (
 /**
  * Secure API route handler with built-in security measures
  */
+type RouteContext = {
+  params: Promise<Record<string, string>>
+}
+
 export function createApiHandler(
   handler: ApiHandler,
   options: ApiHandlerOptions = {}
 ) {
   return async function(
     request: NextRequest,
-    { params }: { params?: Record<string, string> } = {}
+    routeContext: RouteContext
   ): Promise<NextResponse> {
     try {
+      // Await params
+      const params = await routeContext.params;
+      
       // Rate limiting
       if (options.rateLimit) {
         const clientIP = getClientIP(request);
@@ -105,7 +112,7 @@ export function createApiHandler(
             return NextResponse.json(
               { 
                 error: "Validation failed",
-                details: error.errors
+                details: error.flatten().fieldErrors
               },
               { 
                 status: 400,
@@ -151,7 +158,7 @@ export function createApiHandler(
         return NextResponse.json(
           { 
             error: "Validation failed",
-            details: error.errors
+            details: error.flatten().fieldErrors
           },
           { 
             status: 400,

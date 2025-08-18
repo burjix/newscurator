@@ -62,9 +62,9 @@ export async function processRssFeed(sourceId: string): Promise<number> {
         const processed = await processArticle(item, source);
         
         if (processed) {
-          // Check if article already exists (by URL hash)
+          // Check if article already exists (by URL)
           const existingArticle = await prisma.article.findUnique({
-            where: { urlHash: processed.hash }
+            where: { url: processed.url }
           });
 
           if (!existingArticle) {
@@ -81,13 +81,12 @@ export async function processRssFeed(sourceId: string): Promise<number> {
                 data: {
                   title: processed.title,
                   url: processed.url,
-                  urlHash: processed.hash,
                   summary: processed.summary,
-                  content: processed.content,
+                  content: processed.content || '',
                   author: processed.author,
                   publishedAt: processed.publishedAt,
                   imageUrl: processed.imageUrl,
-                  tags: processed.tags,
+                  topics: processed.tags,
                   relevanceScore,
                   sourceId: source.id,
                 }

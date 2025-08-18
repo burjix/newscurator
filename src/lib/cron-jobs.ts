@@ -178,14 +178,3 @@ class CronManager {
 
 // Export singleton instance
 export const cronManager = new CronManager();
-
-// Helper functions referenced by cron jobs
-async function generateScheduledPosts() {
-  // This will be implemented in post-scheduler.ts
-  console.log('Generating scheduled posts...');
-}
-
-async function cleanupOldArticles() {
-  // This will be implemented in cleanup.ts
-  console.log('Cleaning up old articles...');
-}

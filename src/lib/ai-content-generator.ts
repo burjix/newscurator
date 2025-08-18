@@ -70,7 +70,7 @@ function generateTwitterContent(
     PROFESSIONAL: [
       `${truncateForTwitter(article.title, 200)}\n\n${includeLink ? article.url : ''}`,
       `Industry insight: ${truncateForTwitter(article.summary || article.title, 180)}\n\n${includeLink ? article.url : ''}`,
-      `New development in ${profile.industry}: ${truncateForTwitter(article.title, 160)}\n\n${includeLink ? article.url : ''}`
+      `New development in ${profile.industry?.[0] || 'the industry'}: ${truncateForTwitter(article.title, 160)}\n\n${includeLink ? article.url : ''}`
     ],
     CASUAL: [
       `Check this out! ${truncateForTwitter(article.title, 180)} 👀\n\n${includeLink ? article.url : ''}`,
@@ -82,7 +82,7 @@ function generateTwitterContent(
       `Recent report: ${truncateForTwitter(article.title, 180)}\n\n${includeLink ? article.url : ''}`
     ],
     HUMOROUS: [
-      `Plot twist in ${profile.industry}! 🎭\n\n${truncateForTwitter(article.title, 160)}\n\n${includeLink ? article.url : ''}`,
+      `Plot twist in ${profile.industry?.[0] || 'the industry'}! 🎭\n\n${truncateForTwitter(article.title, 160)}\n\n${includeLink ? article.url : ''}`,
       `Well, this is interesting... ${truncateForTwitter(article.title, 160)}\n\n${includeLink ? article.url : ''}`
     ]
   };
@@ -161,14 +161,18 @@ function generateHashtags(
 ): string[] {
   const hashtags: string[] = [];
   
-  // Add industry hashtag
-  if (profile.industry) {
-    hashtags.push(profile.industry.toLowerCase().replace(/\s+/g, ''));
+  // Add industry hashtags
+  if (profile.industry && Array.isArray(profile.industry)) {
+    profile.industry.forEach(ind => {
+      hashtags.push(ind.toLowerCase().replace(/\s+/g, ''));
+    });
   }
   
-  // Add niche hashtag
-  if (profile.niche) {
-    hashtags.push(profile.niche.toLowerCase().replace(/\s+/g, ''));
+  // Add niche hashtags
+  if (profile.niche && Array.isArray(profile.niche)) {
+    profile.niche.forEach(n => {
+      hashtags.push(n.toLowerCase().replace(/\s+/g, ''));
+    });
   }
   
   // Extract hashtags from article tags
@@ -209,9 +213,9 @@ function extractKeyPoints(article: any, maxPoints: number): string[] {
 
 function getLinkedInIntro(article: any, profile: BrandProfile): string {
   const intros = [
-    `Sharing an important development in ${profile.industry}:`,
+    `Sharing an important development in ${profile.industry?.[0] || 'the industry'}:`,
     `This caught my attention and I thought it might interest you:`,
-    `Latest insights from the ${profile.industry} sector:`,
+    `Latest insights from the ${profile.industry?.[0] || 'the industry'} sector:`,
     `Worth discussing with the community:`,
   ];
   return intros[Math.floor(Math.random() * intros.length)];
@@ -221,7 +225,7 @@ function getLinkedInConclusion(profile: BrandProfile): string {
   const conclusions = [
     `What's your perspective on this?`,
     `I'd love to hear your thoughts.`,
-    `How do you see this impacting ${profile.industry}?`,
+    `How do you see this impacting ${profile.industry?.[0] || 'the industry'}?`,
     `Share your insights below.`,
   ];
   return conclusions[Math.floor(Math.random() * conclusions.length)];
@@ -232,7 +236,7 @@ function getFacebookIntro(article: any, profile: BrandProfile): string {
   
   const intros = {
     PROFESSIONAL: [
-      `Important update for those following ${profile.industry} trends:`,
+      `Important update for those following ${profile.industry?.[0] || 'industry'} trends:`,
       `Sharing this relevant article:`,
     ],
     CASUAL: [

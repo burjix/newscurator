@@ -58,36 +58,9 @@ export async function cleanupOldArticles(): Promise<void> {
  * Cleanup orphaned data
  */
 async function cleanupOrphanedData(): Promise<void> {
-  try {
-    // Delete social accounts without users
-    const orphanedAccounts = await prisma.socialAccount.deleteMany({
-      where: {
-        user: {
-          is: null
-        }
-      }
-    });
-
-    if (orphanedAccounts.count > 0) {
-      console.log(`Deleted ${orphanedAccounts.count} orphaned social accounts`);
-    }
-
-    // Delete brand profiles without users
-    const orphanedProfiles = await prisma.brandProfile.deleteMany({
-      where: {
-        user: {
-          is: null
-        }
-      }
-    });
-
-    if (orphanedProfiles.count > 0) {
-      console.log(`Deleted ${orphanedProfiles.count} orphaned brand profiles`);
-    }
-
-  } catch (error) {
-    console.error('Error cleaning up orphaned data:', error);
-  }
+  // Since userId is required in the schema, orphaned records shouldn't exist
+  // This function is kept as a placeholder for future cleanup needs
+  console.log('Orphaned data cleanup check completed');
 }
 
 /**

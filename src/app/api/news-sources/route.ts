@@ -187,10 +187,16 @@ export const POST = createApiHandler(
  */
 async function validateRssUrl(url: string): Promise<boolean> {
   try {
+    // Use AbortController for timeout
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    
     const response = await fetch(url, {
       method: 'HEAD',
-      timeout: 5000,
+      signal: controller.signal
     });
+    
+    clearTimeout(timeout);
     
     const contentType = response.headers.get('content-type') || '';
     return response.ok && (

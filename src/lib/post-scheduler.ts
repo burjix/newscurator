@@ -19,20 +19,20 @@ export async function generateScheduledPosts(): Promise<void> {
         user: {
           select: {
             id: true,
-            subscriptionTier: true
-          }
-        },
-        socialAccounts: {
-          where: {
-            isActive: true
+            subscriptionTier: true,
+            socialAccounts: {
+              where: {
+                isActive: true
+              }
+            }
           }
         }
       }
     });
 
     for (const profile of profiles) {
-      // Check if profile has connected social accounts
-      if (profile.socialAccounts.length === 0) {
+      // Check if user has connected social accounts
+      if (profile.user.socialAccounts.length === 0) {
         continue;
       }
 
@@ -116,22 +116,34 @@ async function generatePostFromArticle(article: any, profile: any): Promise<void
     // Calculate optimal posting time
     const scheduledFor = calculateOptimalPostTime(profile);
 
+    // For now, we need to pick a social account to post to
+    // In a full implementation, this would be configured per brand profile
+    const socialAccounts = await prisma.socialAccount.findMany({
+      where: {
+        userId: profile.userId,
+        isActive: true
+      },
+      take: 1
+    });
+
+    if (socialAccounts.length === 0) {
+      console.log(`No active social accounts for user ${profile.userId}`);
+      return;
+    }
+
     // Create the post
     await prisma.post.create({
       data: {
-        title: article.title,
         content: content.text,
         mediaUrls: article.imageUrl ? [article.imageUrl] : [],
+        hashtags: [],
+        mentions: [],
         status: PostStatus.SCHEDULED,
         scheduledFor,
         userId: profile.userId,
         brandProfileId: profile.id,
-        articleId: article.id,
-        metadata: {
-          generatedFrom: 'article',
-          articleUrl: article.url,
-          voiceTone: profile.voiceTone
-        }
+        socialAccountId: socialAccounts[0].id,
+        articleId: article.id
       }
     });
 
@@ -216,7 +228,8 @@ export async function publishScheduledPosts(): Promise<void> {
         }
       },
       include: {
-        brandProfile: {
+        brandProfile: true,
+        user: {
           include: {
             socialAccounts: {
               where: {
@@ -231,7 +244,7 @@ export async function publishScheduledPosts(): Promise<void> {
     for (const post of duePoots) {
       try {
         // Publish to each connected social account
-        for (const account of post.brandProfile.socialAccounts) {
+        for (const account of post.user.socialAccounts) {
           await publishToSocialMedia(post, account);
         }
 
@@ -244,7 +257,7 @@ export async function publishScheduledPosts(): Promise<void> {
           }
         });
 
-        console.log(`Published post: ${post.title}`);
+        console.log(`Published post: ${post.id}`);
       } catch (error) {
         console.error(`Error publishing post ${post.id}:`, error);
         
@@ -252,11 +265,7 @@ export async function publishScheduledPosts(): Promise<void> {
         await prisma.post.update({
           where: { id: post.id },
           data: {
-            status: PostStatus.FAILED,
-            metadata: {
-              ...post.metadata as any,
-              error: error instanceof Error ? error.message : 'Unknown error'
-            }
+            status: PostStatus.FAILED
           }
         });
       }

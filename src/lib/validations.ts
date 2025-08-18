@@ -164,7 +164,7 @@ export const generatePostSchema = z.object({
 export const webhookSchema = z.object({
   platform: z.enum(['twitter', 'linkedin']),
   eventType: z.string(),
-  data: z.record(z.any()),
+  data: z.record(z.string(), z.any()),
   signature: z.string(),
 }).strict();
 

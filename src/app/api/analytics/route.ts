@@ -2,6 +2,7 @@ import { createApiHandler } from "@/lib/api-handler";
 import { analyticsQuerySchema } from "@/lib/validations";
 import { sanitizeResponse } from "@/lib/security";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 // GET /api/analytics - Get analytics data
 export const GET = createApiHandler(
@@ -23,11 +24,12 @@ export const GET = createApiHandler(
       start = new Date(startDate);
       end = new Date(endDate);
     } else {
-      const days = {
+      const daysMap: Record<string, number> = {
         '7d': 7,
         '30d': 30,
         '90d': 90
-      }[timeRange] || 30;
+      };
+      const days = daysMap[timeRange as string] || 30;
       
       start = new Date(now);
       start.setDate(now.getDate() - days);
@@ -95,7 +97,7 @@ export const GET = createApiHandler(
           },
           ...platformFilter,
           engagementData: {
-            not: null
+            not: Prisma.JsonNull
           }
         },
         _sum: {
@@ -115,7 +117,7 @@ export const GET = createApiHandler(
           },
           ...platformFilter,
           engagementData: {
-            not: null
+            not: Prisma.JsonNull
           }
         },
         select: {
@@ -185,7 +187,7 @@ export const GET = createApiHandler(
 
     // Get platform breakdown
     const platformBreakdown = await prisma.post.groupBy({
-      by: ['socialAccount'],
+      by: ['socialAccountId'],
       where: {
         userId: user.id,
         status: 'PUBLISHED',
@@ -200,7 +202,7 @@ export const GET = createApiHandler(
     });
 
     // Get platform details for breakdown
-    const socialAccountIds = platformBreakdown.map(p => p.socialAccount);
+    const socialAccountIds = platformBreakdown.map(p => p.socialAccountId).filter(Boolean);
     const platformDetails = await prisma.socialAccount.findMany({
       where: {
         id: { in: socialAccountIds },
@@ -215,8 +217,8 @@ export const GET = createApiHandler(
 
     const platformMap = new Map(platformDetails.map(p => [p.id, p]));
     const platformStats = platformBreakdown.map(stat => ({
-      platform: platformMap.get(stat.socialAccount)?.platform,
-      accountName: platformMap.get(stat.socialAccount)?.accountName,
+      platform: platformMap.get(stat.socialAccountId!)?.platform,
+      accountName: platformMap.get(stat.socialAccountId!)?.accountName,
       postCount: stat._count.id
     })).filter(stat => stat.platform);
 

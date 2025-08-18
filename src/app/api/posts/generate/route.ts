@@ -19,17 +19,7 @@ export const POST = createApiHandler(
   async ({ user }, { body }) => {
     // Verify user owns the brand profile
     const brandProfile = await prisma.brandProfile.findUnique({
-      where: { id: body.brandProfileId },
-      select: {
-        id: true,
-        userId: true,
-        name: true,
-        industry: true,
-        niche: true,
-        keywords: true,
-        voiceTone: true,
-        contentPreferences: true
-      }
+      where: { id: body.brandProfileId }
     });
 
     if (!brandProfile) {
@@ -71,7 +61,7 @@ export const POST = createApiHandler(
         article,
         brandProfile,
         platform: body.platform,
-        tone: brandProfile.voiceTone || undefined,
+        tone: typeof brandProfile.voiceTone === 'string' ? brandProfile.voiceTone : undefined,
         includeHashtags: body.includeHashtags,
         includeLink: body.includeLink,
         customInstructions: body.customInstructions
